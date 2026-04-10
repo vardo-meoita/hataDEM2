@@ -1,0 +1,330 @@
+<h2>DESCRIPTION</h2>
+
+<p>
+    <em>r.hataDEM2</em> calculates a radio path-loss coverage raster from a
+    single base station (BS) using the Ericsson model 9999 formula. The output
+    raster gives the path loss in dB at every pixel of the current computational
+    region.
+</p>
+
+<h3>Path loss formula</h3>
+
+<p>Lb = H_OA + m_k + sqrt( (alpha * K_DFR)^2 + J_DFR^2 )</p>
+
+<p>
+    where H_OA is the Okamura-Hata open-area path loss, m_k is a per-pixel
+    land-use clutter correction supplied as the <b>m_k</b> raster, K_DFR is the
+    knife-edge diffraction loss (ITU-R P.526-16, Sec. 4.1), J_DFR is the
+    spherical Earth diffraction loss (ITU-R P.526-16, Sec. 3.2), and alpha = 1.
+</p>
+
+<h3>Okamura-Hata open-area formula</h3>
+
+<p>
+    H_OA = A0 + A1*log10(d) + A2*log10(H_EBK) + A3*log10(d)*log10(H_EBK) -
+    3.2*(log10(11.75*h_m))^2 + 44.49*log10(F) - 4.78*(log10(F))^2
+</p>
+
+<p>
+    where d is the BS-to-MS distance in km, H_EBK is the effective BS antenna
+    height in m (derived from the DEM and the physical mast heights), h_m is the
+    mobile antenna height in m (<b>rx_ant_height</b>), and F is the carrier
+    frequency in MHz.
+</p>
+
+<h3>Tuning parameters</h3>
+
+<p>
+    The four tuning parameters <b>a0</b> (A0), <b>a1</b> (A1), <b>a2</b> (A2),
+    and <b>a3</b> (A3) control the shape of the path-loss curve. The default
+    values are taken directly from the TEMS CellPlanner 9.1 Common Features
+    Technical Reference Manual, Sec. 2.2:
+</p>
+
+<table>
+    <tr>
+        <th>Parameter</th>
+        <th>Default</th>
+        <th>Role</th>
+    </tr>
+    <tr>
+        <td><b>a0</b></td>
+        <td>36.2</td>
+        <td>Absolute level -- shifts the entire curve up or down</td>
+    </tr>
+    <tr>
+        <td><b>a1</b></td>
+        <td>30.7</td>
+        <td>Distance slope</td>
+    </tr>
+    <tr>
+        <td><b>a2</b></td>
+        <td>-12.0</td>
+        <td>Effective antenna height adjustment</td>
+    </tr>
+    <tr>
+        <td><b>a3</b></td>
+        <td>0.1</td>
+        <td>Interaction between distance slope and effective height</td>
+    </tr>
+</table>
+
+<h4>Alternative parameter sets</h4>
+
+<p>
+    Simi et al. ("Minimax LS Algorithm for Automatic Propagation Model Tuning")
+    derive A0 and A1 automatically from field measurements while keeping A2 and
+    A3 at their defaults of -12.0 and 0.1. Their results for Serbia GSM
+    measurements are reproduced below.
+</p>
+
+<p><b>Open area</b> (Table 1 in the paper):</p>
+
+<table>
+    <tr>
+        <th>Algorithm</th>
+        <th>a0</th>
+        <th>a1</th>
+        <th>STD (dB)</th>
+        <th>RMS error (dB)</th>
+        <th>Max error (dB)</th>
+    </tr>
+    <tr>
+        <td>LS</td>
+        <td>45.95</td>
+        <td>100.6</td>
+        <td>6.04</td>
+        <td>36.5</td>
+        <td>20.2</td>
+    </tr>
+    <tr>
+        <td>IRLS</td>
+        <td>47.31</td>
+        <td>101.0</td>
+        <td>6.04</td>
+        <td>38.0</td>
+        <td>18.4</td>
+    </tr>
+</table>
+
+<p><b>Suburban area</b> (Table 2 in the paper):</p>
+
+<table>
+    <tr>
+        <th>Algorithm</th>
+        <th>a0</th>
+        <th>a1</th>
+        <th>STD (dB)</th>
+        <th>RMS error (dB)</th>
+        <th>Max error (dB)</th>
+    </tr>
+    <tr>
+        <td>LS</td>
+        <td>43.20</td>
+        <td>68.93</td>
+        <td>4.96</td>
+        <td>24.52</td>
+        <td>17.36</td>
+    </tr>
+    <tr>
+        <td>IRLS</td>
+        <td>44.17</td>
+        <td>80.55</td>
+        <td>4.96</td>
+        <td>27.1</td>
+        <td>14.56</td>
+    </tr>
+</table>
+
+<p>
+    Note that these parameter sets produced unsatisfactory results in the
+    authors' own testing of <em>r.hataDEM2</em> and are provided here for
+    reference only. Site-specific measurement campaigns are the recommended
+    basis for tuning.
+</p>
+
+<h3>Clutter compensation</h3>
+
+<p>
+    The <b>m_k</b> raster supplies a per-pixel land-use clutter correction that
+    is added directly to the path loss. Each pixel value is the correction in dB
+    for the land-use category at the mobile station location.
+</p>
+
+<p>
+    The TEMS CellPlanner 9.1 Reference Manual gives example m_k values for the
+    WCDMA band (2050 MHz):
+</p>
+
+<table>
+    <tr>
+        <th>Land use type</th>
+        <th>m_k (dB)</th>
+    </tr>
+    <tr>
+        <td>Suburban</td>
+        <td>20.6 - 24.2</td>
+    </tr>
+    <tr>
+        <td>Urban</td>
+        <td>25.6 - 29.2</td>
+    </tr>
+    <tr>
+        <td>Marsh</td>
+        <td>14.0</td>
+    </tr>
+    <tr>
+        <td>Open land</td>
+        <td>4.4</td>
+    </tr>
+    <tr>
+        <td>Pine forest</td>
+        <td>21.9</td>
+    </tr>
+    <tr>
+        <td>Half-open</td>
+        <td>17.6</td>
+    </tr>
+    <tr>
+        <td>Forest</td>
+        <td>17.9</td>
+    </tr>
+    <tr>
+        <td>Water</td>
+        <td>3.4</td>
+    </tr>
+    <tr>
+        <td>Village</td>
+        <td>15.7</td>
+    </tr>
+</table>
+
+<p>
+    The TEMS CellPlanner 9.1 software ships with the following default clutter
+    table for GSM-900:
+</p>
+
+<table>
+    <tr>
+        <th>Land use type</th>
+        <th>m_k (dB)</th>
+    </tr>
+    <tr>
+        <td>Buildings</td>
+        <td>14.67</td>
+    </tr>
+    <tr>
+        <td>Densely forested</td>
+        <td>18.0</td>
+    </tr>
+    <tr>
+        <td>Open</td>
+        <td>6.0</td>
+    </tr>
+    <tr>
+        <td>Open vegetated</td>
+        <td>14.0</td>
+    </tr>
+    <tr>
+        <td>Sparsely forested</td>
+        <td>9.2</td>
+    </tr>
+    <tr>
+        <td>Water</td>
+        <td>2.0</td>
+    </tr>
+</table>
+
+<p>
+    These tables are illustrative starting points. The correction values vary
+    with frequency, terrain, and regional morphology. Users are strongly
+    encouraged to derive their own clutter correction values from empirical
+    path-loss measurements.
+</p>
+
+<h2>NOTES</h2>
+
+<ul>
+    <li>
+        The computation covers the entire current GRASS computational region.
+        Use <em>g.region</em> to limit the extent before running the module.
+    </li>
+    <li>
+        The DEM must have a valid (non-null) value at the base station pixel.
+        Pixels where either <b>input_dem</b> or <b>m_k</b> is null are written
+        as null in the output.
+    </li>
+    <li>Distances shorter than 0.02 km are clamped to that value.</li>
+    <li>
+        All parameters are saved in the output map history (<em>r.info</em>
+        <b>-h</b>).
+    </li>
+    <li>
+        Parallel computation is supported via <b>nprocs</b> (OpenMP). An
+        optional GPU path is available when the module is built with
+        <code>WITH_OPENCL=1</code>.
+    </li>
+</ul>
+
+<h2>EXAMPLES</h2>
+
+<p>
+    Compute path loss for a base station at UTM coordinates (412500 E, 5068000
+    N), BS antenna height 30 m, using 4 threads:
+</p>
+
+<div class="code">
+    <pre>
+r.hataDEM2 input_dem=dem m_k=clutter output=path_loss \
+    coordinates=412500,5068000 ant_height=30 rx_ant_height=1.5 \
+    frequency=900 nprocs=4
+</pre
+    >
+</div>
+
+<p>Restrict computation to a study area before running:</p>
+
+<div class="code">
+    <pre>
+g.region vector=study_area
+r.hataDEM2 input_dem=dem m_k=clutter output=path_loss \
+    coordinates=412500,5068000 ant_height=30
+</pre
+    >
+</div>
+
+<h2>REFERENCES</h2>
+
+<p>
+    TEMS CellPlanner 9.1 Common Features Technical Reference Manual, Sec. 2.2
+    9999 Propagation Model.
+</p>
+
+<p>
+    Hata, M. (1980). Empirical formula for propagation loss in land mobile radio
+    services. <em>IEEE Transactions on Vehicular Technology</em>, 29(3),
+    317-325.
+</p>
+
+<p>
+    ITU-R Recommendation P.526-16 (2025). Propagation by diffraction.
+    International Telecommunication Union, Geneva.
+</p>
+
+<h2>SEE ALSO</h2>
+
+<em>
+    <a href="g.region.html">g.region</a>,
+    <a href="r.hataDEM.html">r.hataDEM</a>,
+    <a href="r.info.html">r.info</a>
+</em>
+
+<h2>AUTHORS</h2>
+
+<ul>
+    <li>tifil</li>
+    <li>Andrej Vilhar, Jozef Stefan Institute</li>
+    <li>Tomaz Javornik, Jozef Stefan Institute</li>
+    <li>Andrej Hrovat, Jozef Stefan Institute</li>
+    <li>Igor Ozimek, Jozef Stefan Institute</li>
+</ul>
